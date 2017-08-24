@@ -34,23 +34,22 @@ def sync_handle_buf(fan_fd, redis_connection):
         fdpath = '/proc/self/fd/{:d}'.format(event.fd)
         target_path = os.readlink(fdpath)
         pid = event.pid
-        pid_has_name = redis_connection.hexists('pid_names', pid)
-        pid_has_path = redis_connection.hexists('pid_paths', pid)
-        if pid_has_name:
-            name = redis_connection.hget('pid_names', pid).decode('utf-8')
-        else:
+        try:
             fdpath = '/proc/{:d}/exe'.format(event.pid)
-            try:
-                name = os.readlink(fdpath)
-            except:
-                if pid_has_path:
-                    first_path = redis_connection.hget('pid_paths', pid).decode('utf-8')
-                    name = first_path
-                else:
-                    redis_connection.hset('pid_paths', pid, target_path)
-                    name = target_path
+            name = os.readlink(fdpath)
+        except:
+            pid_has_name = redis_connection.hexists('pid_names', pid)
+            pid_has_path = redis_connection.hexists('pid_paths', pid)
+            if pid_has_name:
+                name = redis_connection.hget('pid_names', pid).decode('utf-8')
+            if pid_has_path:
+                first_path = redis_connection.hget('pid_paths', pid).decode('utf-8')
+                name = first_path
+            else:
+                redis_connection.hset('pid_paths', pid, target_path)
+                name = target_path
             redis_connection.hset('pid_names', pid, name)
-        logging.info('time: {:f} pid: {:d} exe: {:s} opened {:s}, analysis took {:f}'.format(start_time, pid, name, target_path, time.time()-start_time))
+        logging.info('time: {:f} pid: {:d} exe: {:s} opened {:s}, analysis took {:f} now {:f}'.format(start_time, pid, name, target_path, time.time()-start_time, time.time()))
         os.close(event.fd)
     assert not buf
 
