@@ -1,0 +1,3 @@
+git+https://github.com/google/python-fanotify.git
+redis
+psutil
